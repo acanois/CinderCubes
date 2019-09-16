@@ -26,6 +26,8 @@ private:
     // Visual
     CameraPersp  mCam;
     gl::BatchRef mCubeBatch;
+    
+    static constexpr size_t mWindowSize = 32;
 };
 
 void CubeFFTApp::prepareSettings( Settings* settings )
@@ -43,7 +45,7 @@ void CubeFFTApp::setup()
     mInputDeviceNode = ctx->createInputDeviceNode();
     
     // Use double FFT size vs windowSize because it causes the FFT to be zero-padded
-    auto monitorFormat = audio::MonitorSpectralNode::Format().fftSize( 32 ).windowSize( 16 );
+    auto monitorFormat = audio::MonitorSpectralNode::Format().fftSize( 64 ).windowSize( mWindowSize );
     mMonitorSpectralNode = ctx->makeNode( new audio::MonitorSpectralNode( monitorFormat ) );
 
     mInputDeviceNode->connect( mMonitorSpectralNode );
@@ -89,16 +91,11 @@ void CubeFFTApp::mouseDown( MouseEvent event )
 
 void CubeFFTApp::update()
 {
-//    mMagSpectrum = mMonitorSpectralNode->getMagSpectrum();
+    mMagSpectrum = mMonitorSpectralNode->getMagSpectrum();
 }
 
 void CubeFFTApp::draw()
 {
-    mMagSpectrum = mMonitorSpectralNode->getMagSpectrum();
-    float mag = audio::linearToDecibel( mMagSpectrum[1] );
-    float freq = mMonitorSpectralNode->getFreqForBin( 1 );
-    console() << mag << std::endl;
-    
 	gl::clear( Color( 0, 0, 0 ) );
     
     //============CUBE CLASS====================
@@ -106,18 +103,15 @@ void CubeFFTApp::draw()
     gl::enableDepthWrite();
     gl::setMatrices( mCam );
     
-    size_t numCubes = 16;
-    
-//    for (auto level : mMagSpectrum)
-//        console() << level << std::endl;
-    
-    for ( size_t i = 0; i < numCubes; ++i )
+    for ( size_t i = 0; i < mWindowSize; ++i )
     {
+        float alpha = mMagSpectrum[i];
         gl::pushModelMatrix();
         gl::translate( vec3( 0.f, 0.f, 0.f ) );
-        gl::color( ColorA( 1.f, 1.f, 1.f, 1.f ) );
+        gl::color( ColorA( 1.f, 1.f, 1.f, alpha ) );
         gl::scale( vec3( i * 0.2f ) );
         mCubeBatch->draw();
+        gl::drawLine( vec2( 10, 0 ), vec2( 10, mMagSpectrum[i] ) );
         gl::popModelMatrix();
     }
     //==========================================
