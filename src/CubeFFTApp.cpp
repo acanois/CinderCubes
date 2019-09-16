@@ -2,6 +2,14 @@
 #include "cinder/app/RendererGl.h"
 #include "cinder/gl/gl.h"
 #include "cinder/audio/audio.h"
+#include "cinder/CameraUi.h"
+
+
+/**
+ TODO:  Optimize the draw function
+        Get a better audio source than the damn microphone
+        Figure out how to get the glow effect
+ */
 
 using namespace ci;
 using namespace ci::app;
@@ -25,9 +33,12 @@ private:
     
     // Visual
     CameraPersp  mCam;
+    
     gl::BatchRef mCubeBatch;
     
-    static constexpr size_t mWindowSize = 32;
+    static constexpr size_t mWindowSize { 32 };
+    
+    float mTheta { 0.0f };
 };
 
 void CubeFFTApp::prepareSettings( Settings* settings )
@@ -39,7 +50,7 @@ void CubeFFTApp::prepareSettings( Settings* settings )
 
 void CubeFFTApp::setup()
 {
-    //============CUBE CLASS====================
+    //============AUDIO CLASS====================
     auto ctx = audio::Context::master();
     
     mInputDeviceNode = ctx->createInputDeviceNode();
@@ -73,7 +84,7 @@ void CubeFFTApp::setup()
     mCam.lookAt( eyePoint, target );
     //==========================================
     
-    printFFTInfo();
+//    printFFTInfo();
 }
 
 void CubeFFTApp::printFFTInfo()
@@ -92,6 +103,7 @@ void CubeFFTApp::mouseDown( MouseEvent event )
 void CubeFFTApp::update()
 {
     mMagSpectrum = mMonitorSpectralNode->getMagSpectrum();
+    mTheta += 0.001;
 }
 
 void CubeFFTApp::draw()
@@ -101,23 +113,30 @@ void CubeFFTApp::draw()
     //============CUBE CLASS====================
     gl::enableDepthRead();
     gl::enableDepthWrite();
+    gl::enableAdditiveBlending();
+    gl::enableAlphaBlending();
     gl::setMatrices( mCam );
     
     for ( size_t i = 0; i < mWindowSize; ++i )
     {
+        // Close enough for now
         float alpha = mMagSpectrum[i];
+        float hue = i / static_cast<float>( mWindowSize );
+        
+        console() << "hue " << i << ": " << hue << std::endl;
+        
         gl::pushModelMatrix();
         gl::translate( vec3( 0.f, 0.f, 0.f ) );
-        gl::color( ColorA( 1.f, 1.f, 1.f, alpha ) );
+        gl::color( Color( CM_HSV, hue, 1.f, alpha ) );
         gl::scale( vec3( i * 0.2f ) );
         mCubeBatch->draw();
-        gl::drawLine( vec2( 10, 0 ), vec2( 10, mMagSpectrum[i] ) );
         gl::popModelMatrix();
     }
     //==========================================
-
+    
+    gl::disableAlphaBlending();
     gl::disableDepthWrite();
     gl::disableDepthRead();
 }
 
-CINDER_APP( CubeFFTApp, RendererGl, CubeFFTApp::prepareSettings )
+CINDER_APP( CubeFFTApp, RendererGl( RendererGl::Options().msaa( 8 ) ), CubeFFTApp::prepareSettings )
