@@ -36,7 +36,7 @@ private:
     
     gl::BatchRef mCubeBatch;
     
-    static constexpr size_t mWindowSize { 32 };
+    static constexpr size_t mWindowSize { 256 };
     
     float mTheta { 0.0f };
 };
@@ -55,7 +55,7 @@ void CubeFFTApp::setup()
     
     mInputDeviceNode = ctx->createInputDeviceNode();
     
-    auto monitorFormat = audio::MonitorSpectralNode::Format().fftSize( 64 ).windowSize( mWindowSize );
+    auto monitorFormat = audio::MonitorSpectralNode::Format().fftSize( mWindowSize * 2 ).windowSize( mWindowSize );
     
     mMonitorSpectralNode = ctx->makeNode( new audio::MonitorSpectralNode( monitorFormat ) );
     mInputDeviceNode->connect( mMonitorSpectralNode );
@@ -66,12 +66,13 @@ void CubeFFTApp::setup()
     //==================CUBE====================
     auto color = gl::ShaderDef().color();
     gl::GlslProgRef shader = gl::getStockShader( color );
-    mCubeBatch = gl::Batch::create( geom::WireCube( vec3( 1.f, 1.f, 1.f ), ivec3( 0 ) ), shader );
+    mCubeBatch = gl::Batch::create( geom::WireCube( vec3( 1.f, 1.f, 1.f ), ivec3( 1 ) ), shader );
     
     //=================CAMERA===================
     auto fov = 60;
     auto nearPlane = 1;
     auto farPlane = 1000;
+    
     vec3 eyePoint = vec3( 3.f, 3.f, 3.f );
     vec3 target = vec3( 0.f, 0.f, 0.f );
     
@@ -100,7 +101,7 @@ void CubeFFTApp::update()
 
 void CubeFFTApp::draw()
 {
-	gl::clear( Color( 0.2f, 0, 0.2f ) );
+	gl::clear( Color( 0.1f, 0.f, 0.3f ) );
     
     gl::enableDepthRead();
     gl::enableDepthWrite();
@@ -110,18 +111,18 @@ void CubeFFTApp::draw()
     for ( size_t i = 0; i < mWindowSize; ++i )
     {
         // Close enough for now
-        float alpha = audio::linearToDecibel( mMagSpectrum[i] ) * 0.01;
+        float alpha = ( audio::linearToDecibel( mMagSpectrum[i] ) * 0.01f );
         float hue = i / static_cast<float>( mWindowSize );
         float freq = mMonitorSpectralNode->getFreqForBin( i ) * 2;
         
         gl::pushModelMatrix();
         gl::translate( vec3( std::sin( mTheta ), 0.f, std::cos( mTheta ) ) );
-        
-        gl::rotate( i * ( ( std::sin( mTheta ) ) * 0.1f ), vec3( 1.f, 0.f, 0.f ) );
+
+        gl::rotate( i * ( ( std::sin( ( mTheta * 0.1 ) ) ) * 0.2f ), vec3( 1.f, 0.f, 1.f ) );
         gl::rotate( mTheta, vec3( std::sin( mTheta ), 0.f, std::cos( 1.f ) ) );
-        
-        gl::color( Color( CM_HSV, hue, 0.f, alpha ) );
-        gl::scale( vec3( i * 0.3f ) );
+
+        gl::color( Color( CM_HSV, ( ( hue / 2.f ) + 0.20f ), freq, alpha ) );
+        gl::scale( vec3( ( i * 1.f ) * 0.1f ) );
         mCubeBatch->draw();
         gl::popModelMatrix();
     }
