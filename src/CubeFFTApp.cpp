@@ -39,6 +39,7 @@ private:
     static constexpr size_t mWindowSize { 256 };
     
     float mTheta { 0.0f };
+    size_t mHueMod { 0 };
 };
 
 void CubeFFTApp::prepareSettings( Settings* settings )
@@ -101,7 +102,7 @@ void CubeFFTApp::update()
 
 void CubeFFTApp::draw()
 {
-	gl::clear( Color( 0.1f, 0.f, 0.3f ) );
+	gl::clear( Color( 0.1f, 0.1f, 0.3f ) );
     
     gl::enableDepthRead();
     gl::enableDepthWrite();
@@ -118,11 +119,14 @@ void CubeFFTApp::draw()
         gl::pushModelMatrix();
         gl::translate( vec3( std::sin( mTheta ), 0.f, std::cos( mTheta ) ) );
 
-        gl::rotate( i * ( ( std::sin( ( mTheta * 0.1 ) ) ) * 0.2f ), vec3( 1.f, 0.f, 1.f ) );
+        gl::rotate( i * ( ( std::sin( ( mTheta ) ) ) * 0.1f ), vec3( 1.f, 0.f, 0.f ) );
         gl::rotate( mTheta, vec3( std::sin( mTheta ), 0.f, std::cos( 1.f ) ) );
-
-        gl::color( Color( CM_HSV, ( ( hue / 2.f ) + 0.20f ), freq, alpha ) );
-        gl::scale( vec3( ( i * 1.f ) * 0.1f ) );
+        
+        // Loop the color wheel
+        auto hueMod = fmod( ( hue / 2.f ) + mTheta, 1.f );
+        
+        gl::color( Color( CM_HSV, hueMod, freq, alpha ) );
+        gl::scale( vec3( i * 0.05f ) );
         mCubeBatch->draw();
         gl::popModelMatrix();
     }
