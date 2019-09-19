@@ -40,6 +40,8 @@ private:
     
     float mTheta { 0.0f };
     size_t mHueMod { 0 };
+    
+    std::vector<gl::BatchRef> cubeVector;
 };
 
 void CubeFFTApp::prepareSettings( Settings* settings )
@@ -67,7 +69,12 @@ void CubeFFTApp::setup()
     //==================CUBE====================
     auto color = gl::ShaderDef().color();
     gl::GlslProgRef shader = gl::getStockShader( color );
-    mCubeBatch = gl::Batch::create( geom::WireCube( vec3( 1.f, 1.f, 1.f ), ivec3( 1 ) ), shader );
+    mCubeBatch = gl::Batch::create( geom::WireCube( vec3( 1.5f, 1.f, 1.f ), ivec3( 1 ) ), shader );
+    
+    for ( auto i = 0; i < mWindowSize; ++i )
+    {
+        cubeVector.push_back( mCubeBatch );
+    }
     
     //=================CAMERA===================
     auto fov = 60;
@@ -102,7 +109,7 @@ void CubeFFTApp::update()
 
 void CubeFFTApp::draw()
 {
-	gl::clear( Color( 0.1f, 0.1f, 0.3f ) );
+	gl::clear( Color( 0.1f, 0.1f, 0.25f ) );
     
     gl::enableDepthRead();
     gl::enableDepthWrite();
@@ -114,20 +121,21 @@ void CubeFFTApp::draw()
         // Close enough for now
         float alpha = ( audio::linearToDecibel( mMagSpectrum[i] ) * 0.01f );
         float hue = i / static_cast<float>( mWindowSize );
-        float freq = mMonitorSpectralNode->getFreqForBin( i ) * 2;
+        float sineRotation = std::sin( ( mTheta * 0.1f ) );
+        
+        /// Spirals happen around 30 and 60
         
         gl::pushModelMatrix();
         gl::translate( vec3( std::sin( mTheta ), 0.f, std::cos( mTheta ) ) );
-
-        gl::rotate( i * ( ( std::sin( ( mTheta ) ) ) * 0.1f ), vec3( 1.f, 0.f, 0.f ) );
+        gl::rotate( ( i * sineRotation * 0.1f ), vec3( 1.f, 0.f, 0.f ) );
         gl::rotate( mTheta, vec3( std::sin( mTheta ), 0.f, std::cos( 1.f ) ) );
         
         // Loop the color wheel
-        auto hueMod = fmod( ( hue / 2.f ) + mTheta, 1.f );
+        auto hueMod = std::abs( fmod( hue - mTheta, 1.f ) );
         
-        gl::color( Color( CM_HSV, hueMod, freq, alpha ) );
+        gl::color( Color( CM_HSV, hueMod, 1.f, alpha ) );
         gl::scale( vec3( i * 0.05f ) );
-        mCubeBatch->draw();
+        cubeVector[i]->draw();
         gl::popModelMatrix();
     }
     
@@ -135,4 +143,4 @@ void CubeFFTApp::draw()
     gl::disableDepthRead();
 }
 
-CINDER_APP( CubeFFTApp, RendererGl( RendererGl::Options().msaa( 8 ) ), CubeFFTApp::prepareSettings )
+CINDER_APP( CubeFFTApp, RendererGl( RendererGl::Options().msaa( 16 ) ), CubeFFTApp::prepareSettings )
