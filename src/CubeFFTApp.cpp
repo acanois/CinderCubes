@@ -25,6 +25,12 @@ public:
     
     void printFFTInfo();
     
+    void initializeAudio();
+    void initializeCubes();
+    void initializeCamera();
+    
+    void drawCubes();
+    
 private:
     // Audio
     audio::InputDeviceNodeRef        mInputDeviceNode;
@@ -36,7 +42,7 @@ private:
     
     gl::BatchRef mCubeBatch;
     
-    static constexpr size_t mWindowSize { 256 };
+    static constexpr size_t mWindowSize { 128 };
     
     float mTheta { 0.0f };
     size_t mHueMod { 0 };
@@ -51,9 +57,17 @@ void CubeFFTApp::prepareSettings( Settings* settings )
     settings->setWindowPos( vec2( 200, 0 ) );
 }
 
+//================================================================================
 void CubeFFTApp::setup()
 {
-    //=================AUDIO====================
+    initializeAudio();
+    initializeCamera();
+    initializeCubes();
+}
+
+//================================================================================
+void CubeFFTApp::initializeAudio()
+{
     auto ctx = audio::Context::master();
     
     mInputDeviceNode = ctx->createInputDeviceNode();
@@ -63,20 +77,14 @@ void CubeFFTApp::setup()
     mMonitorSpectralNode = ctx->makeNode( new audio::MonitorSpectralNode( monitorFormat ) );
     mInputDeviceNode->connect( mMonitorSpectralNode );
     mInputDeviceNode->enable();
+    
     ctx->enable();
+    
     getWindow()->setTitle( mInputDeviceNode->getDevice()->getName() );
-    
-    //==================CUBE====================
-    auto color = gl::ShaderDef().color();
-    gl::GlslProgRef shader = gl::getStockShader( color );
-    mCubeBatch = gl::Batch::create( geom::WireCube( vec3( 1.5f, 1.f, 1.f ), ivec3( 1 ) ), shader );
-    
-    for ( auto i = 0; i < mWindowSize; ++i )
-    {
-        cubeVector.push_back( mCubeBatch );
-    }
-    
-    //=================CAMERA===================
+}
+
+void CubeFFTApp::initializeCamera()
+{
     auto fov = 60;
     auto nearPlane = 1;
     auto farPlane = 1000;
@@ -91,12 +99,27 @@ void CubeFFTApp::setup()
 void CubeFFTApp::printFFTInfo()
 {
     size_t numBins = mMonitorSpectralNode->getNumBins();
-    float nyquist = static_cast<float>( audio::master()->getSampleRate() / 2.f );
+    float nyquist  = static_cast<float>( audio::master()->getSampleRate() / 2.f );
     
     console() << "Bin Count: " << numBins << std::endl;
     console() << "Nyquist:   " << nyquist << std::endl;
 }
 
+void CubeFFTApp::initializeCubes()
+{
+    auto color = gl::ShaderDef().color();
+    gl::GlslProgRef shader = gl::getStockShader( color );
+    
+    auto cube = geom::WireCube( vec3( 1.f, 1.f, 1.f ), ivec3( 1 ) );
+    mCubeBatch = gl::Batch::create( cube, shader );
+    
+    for ( auto i = 0; i < mWindowSize; ++i )
+    {
+        cubeVector.push_back( mCubeBatch );
+    }
+}
+
+//================================================================================
 void CubeFFTApp::mouseDown( MouseEvent event )
 {
 }
@@ -105,6 +128,32 @@ void CubeFFTApp::update()
 {
     mMagSpectrum = mMonitorSpectralNode->getMagSpectrum();
     mTheta += 0.002;
+}
+
+//================================================================================
+void CubeFFTApp::drawCubes()
+{
+    for ( size_t i = 0; i < ( mWindowSize - 32 ); ++i )
+    {
+        // Close enough for now
+        float alpha = ( audio::linearToDecibel( mMagSpectrum[i] ) * 0.01f );
+        float hue = i / static_cast<float>( mWindowSize );
+        float sineRotation = std::sin( ( mTheta * 0.1f ) );
+        
+        gl::pushModelMatrix();
+        gl::translate( vec3( std::sin( mTheta ), 0.f, std::cos( mTheta ) ) );
+        gl::rotate( ( i * ( sineRotation * 0.5 ) ),  // x
+                    vec3( 1.f, std::cos( mTheta ),   // y
+                    std::sin( mTheta ) ) );          // z
+        
+        // Loop the color wheel
+        auto hueMod = std::abs( fmod( hue - mTheta, 1.f ) );
+        
+        gl::color( Color( CM_HSV, hueMod, 1.f, alpha ) );
+        gl::scale( vec3( i * 0.05f ) );
+        cubeVector[i]->draw();
+        gl::popModelMatrix();
+    }
 }
 
 void CubeFFTApp::draw()
@@ -116,28 +165,7 @@ void CubeFFTApp::draw()
     gl::enableAdditiveBlending();
     gl::setMatrices( mCam );
     
-    for ( size_t i = 0; i < mWindowSize; ++i )
-    {
-        // Close enough for now
-        float alpha = ( audio::linearToDecibel( mMagSpectrum[i] ) * 0.01f );
-        float hue = i / static_cast<float>( mWindowSize );
-        float sineRotation = std::sin( ( mTheta * 0.1f ) );
-        
-        /// Spirals happen around 30 and 60
-        
-        gl::pushModelMatrix();
-        gl::translate( vec3( std::sin( mTheta ), 0.f, std::cos( mTheta ) ) );
-        gl::rotate( ( i * sineRotation * 0.1f ), vec3( 1.f, 0.f, 0.f ) );
-        gl::rotate( mTheta, vec3( std::sin( mTheta ), 0.f, std::cos( 1.f ) ) );
-        
-        // Loop the color wheel
-        auto hueMod = std::abs( fmod( hue - mTheta, 1.f ) );
-        
-        gl::color( Color( CM_HSV, hueMod, 1.f, alpha ) );
-        gl::scale( vec3( i * 0.05f ) );
-        cubeVector[i]->draw();
-        gl::popModelMatrix();
-    }
+    drawCubes();
     
     gl::disableDepthWrite();
     gl::disableDepthRead();
