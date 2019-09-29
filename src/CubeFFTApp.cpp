@@ -158,7 +158,7 @@ void CubeFFTApp::drawCubes()
 
 void CubeFFTApp::draw()
 {
-	gl::clear( Color( 0.1f, 0.1f, 0.25f ) );
+	gl::clear( Color( 0.12f, 0.1f, 0.22f ) );
     
     gl::enableDepthRead();
     gl::enableDepthWrite();
