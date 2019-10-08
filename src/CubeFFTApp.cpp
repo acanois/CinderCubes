@@ -40,6 +40,7 @@ private:
     // Visual
     CameraPersp  mCam;
     
+    gl::GlslProgRef mShaderProgram;
     gl::BatchRef mCubeBatch;
     
     static constexpr size_t mWindowSize { 128 };
@@ -62,6 +63,9 @@ void CubeFFTApp::setup()
 {
     initializeAudio();
     initializeCamera();
+    
+
+    
     initializeCubes();
 }
 
@@ -96,6 +100,7 @@ void CubeFFTApp::initializeCamera()
     mCam.lookAt( eyePoint, target );
 }
 
+/// Not currently being used
 void CubeFFTApp::printFFTInfo()
 {
     size_t numBins = mMonitorSpectralNode->getNumBins();
@@ -105,13 +110,14 @@ void CubeFFTApp::printFFTInfo()
     console() << "Nyquist:   " << nyquist << std::endl;
 }
 
+//================================================================================
 void CubeFFTApp::initializeCubes()
 {
-    auto color = gl::ShaderDef().color();
-    gl::GlslProgRef shader = gl::getStockShader( color );
+    /// Move to its own function eventually
+    mShaderProgram = gl::GlslProg::create( loadAsset( "vert.glsl" ), loadAsset( "frag.glsl" ) );
     
     auto cube = geom::WireCube( vec3( 1.f, 1.f, 1.f ), ivec3( 1 ) );
-    mCubeBatch = gl::Batch::create( cube, shader );
+    mCubeBatch = gl::Batch::create( cube, mShaderProgram );
     
     for ( auto i = 0; i < mWindowSize; ++i )
     {
@@ -162,8 +168,6 @@ void CubeFFTApp::drawCubes()
             cubeVector[i]->draw();
         
         gl::popModelMatrix();
-        
-//        mMagSpectrum[i] *= 0.99f;
     }
 }
 
