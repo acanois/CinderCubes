@@ -133,32 +133,43 @@ void CubeFFTApp::update()
 //================================================================================
 void CubeFFTApp::drawCubes()
 {
-    for ( size_t i = 0; i < ( mWindowSize - 32 ); ++i )
+    for ( size_t i = 0; i < ( mWindowSize * 0.75f ); ++i )
     {
         // Close enough for now
         float alpha = ( audio::linearToDecibel( mMagSpectrum[i] ) * 0.01f );
         float hue = i / static_cast<float>( mWindowSize );
-        float sineRotation = std::sin( ( mTheta * 0.1f ) );
+        float rotationSpeed = 0.05f;
+        float sineRotation = std::sin( ( mTheta * rotationSpeed ) );
+        float cubeDensity = 0.05f;
         
         gl::pushModelMatrix();
         gl::translate( vec3( std::sin( mTheta ), 0.f, std::cos( mTheta ) ) );
-        gl::rotate( ( i * ( sineRotation * 0.5 ) ),  // x
-                    vec3( 1.f, std::cos( mTheta ),   // y
-                    std::sin( mTheta ) ) );          // z
+//        gl::rotate( ( i * ( sineRotation * 0.5 ) ),  // x
+//                    vec3( 1.f, std::cos( mTheta ),   // y
+//                    std::sin( mTheta ) ) );          // z
+        gl::rotate( ( i * ( std::sin( ( mTheta * 0.01f ) * ( i * 2.f ) ) * 0.005f ) ),
+                            vec3( 0.25f, 0.f, 0.25f ) );
+        gl::rotate( mTheta, vec3( 1.f, 0.f, 0.f ) );
+        
         
         // Loop the color wheel
         auto hueMod = std::abs( fmod( hue - mTheta, 1.f ) );
         
         gl::color( Color( CM_HSV, hueMod, 1.f, alpha ) );
-        gl::scale( vec3( i * 0.05f ) );
-        cubeVector[i]->draw();
+        gl::scale( vec3( i * cubeDensity ) );
+        
+        if ( alpha > 0.0f )
+            cubeVector[i]->draw();
+        
         gl::popModelMatrix();
+        
+//        mMagSpectrum[i] *= 0.99f;
     }
 }
 
 void CubeFFTApp::draw()
 {
-	gl::clear( Color( 0.12f, 0.1f, 0.22f ) );
+	gl::clear( Color( 0.1f, 0.1f, 0.17f ) );
     
     gl::enableDepthRead();
     gl::enableDepthWrite();
